@@ -30,3 +30,5 @@ A real-time, AI-powered business intelligence dashboard for oil and gas operatio
 
 ## 📁 Project Structure
 
+streamlit link : https://petroenergyai-eekxcmuesthjy9c33pzbz6.streamlit.app/
+
