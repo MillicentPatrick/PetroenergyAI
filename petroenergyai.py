@@ -9,7 +9,7 @@ from pipeline import initialize_forecaster, initialize_maintenance_model
 from fpdf import FPDF
 from io import BytesIO
 
-# ✅ This must remain the first Streamlit command
+
 st.set_page_config(page_title="PetroEnergy Dashboard", layout="wide")
 
 def fetch_yfinance_data():
@@ -32,7 +32,7 @@ def fetch_yfinance_data():
     return df
 
 def update_market_data_file():
-    file_path = 'data/market_data.csv'
+    file_path = os.path.join(os.path.dirname(__file__), 'data/market_data.csv')
     live_data = fetch_yfinance_data()
     if os.path.exists(file_path):
         existing = pd.read_csv(file_path, parse_dates=['DATE'])
@@ -87,8 +87,9 @@ def generate_pdf(summary_text):
     pdf.set_font("Arial", 'I', 8)
     pdf.cell(0, 10, f"Generated on {date.today().strftime('%Y-%m-%d')}", 0, 0, 'C')
     
-    # Return PDF bytes directly (no need to encode as it's already bytes)
-    return BytesIO(pdf.output(dest='S'))
+    # Return PDF as bytes
+    pdf_output = pdf.output(dest='S').encode('latin-1')
+    return BytesIO(pdf_output)
 
 def main():
     # Auto-update once a week
@@ -103,10 +104,11 @@ def main():
         update_market_data_file()
         st.success("Market data refreshed.")
 
-    # Load data
-    production_data = pd.read_csv('data/production_data.csv', parse_dates=['DATE'])
-    equipment_data = pd.read_csv('data/equipment_data.csv', parse_dates=['TIMESTAMP'])
-    market_data = pd.read_csv('data/market_data.csv', parse_dates=['DATE'])
+    # Load data with absolute paths
+    base_dir = os.path.dirname(__file__)
+    production_data = pd.read_csv(os.path.join(base_dir, 'data/production_data.csv'), parse_dates=['DATE'])
+    equipment_data = pd.read_csv(os.path.join(base_dir, 'data/equipment_data.csv'), parse_dates=['TIMESTAMP'])
+    market_data = pd.read_csv(os.path.join(base_dir, 'data/market_data.csv'), parse_dates=['DATE'])
 
     # Clean market data before training
     market_data = market_data.dropna(subset=['WTIPRICE', 'BRENTPRICE'])
@@ -172,9 +174,8 @@ def main():
         maintenance_report = maintenance_model.generate_maintenance_report(equipment_data)
         st.subheader("Top 5 Maintenance Priorities")
         st.dataframe(maintenance_report.head())
-        maintenance_report.to_csv("weekly_maintenance_schedule.csv", index=False)
         st.download_button(
-            "📥 Download Maintenance CSV", 
+            " Download Maintenance CSV", 
             data=maintenance_report.to_csv(index=False), 
             file_name="weekly_maintenance_schedule.csv",
             mime='text/csv'
@@ -195,7 +196,7 @@ def main():
         last_health = facility_equipment['HEALTHSCORE'].iloc[-1] if not facility_equipment.empty else 'N/A'
         price_trend = "increasing" if price_preds['WTIPRICE_PRED'].iloc[-1] > price_preds['WTIPRICE_PRED'].iloc[0] else "decreasing"
 
-        alert = f"⚠️ {len(anomalies[anomalies == -1])} anomalies found. Consider maintenance." if (anomalies == -1).sum() > 0 else "✅ All equipment normal."
+        alert = f" {len(anomalies[anomalies == -1])} anomalies found. Consider maintenance." if (anomalies == -1).sum() > 0 else " All equipment normal."
         st.info(alert)
 
         summary = f"""
