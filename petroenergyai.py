@@ -45,82 +45,61 @@ def update_market_data_file():
         live_data.to_csv(file_path, index=False)
 
 def generate_pdf(summary_text):
-    """Generate PDF from summary text with proper formatting"""
     pdf = FPDF()
     pdf.add_page()
-    
-    # Set document properties
     pdf.set_title("PetroEnergy Executive Summary")
     pdf.set_author("PetroEnergy Analytics")
-    
-    # Set margins (left, top, right)
     pdf.set_margins(15, 15, 15)
-    
-    # Calculate effective width (total width - margins)
-    effective_width = pdf.w - 30  # 15mm left + 15mm right
-    
-    # Add title
+    effective_width = pdf.w - 30
+
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(effective_width, 10, "PetroEnergy Executive Summary", ln=True, align='C')
-    pdf.ln(10)  # Add space
-    
-    # Set body font
+    pdf.ln(10)
+
     pdf.set_font("Arial", size=12)
-    
-    # Process each paragraph
     paragraphs = summary_text.split('\n')
     for para in paragraphs:
         para = para.strip()
         if para:
-            # Handle bold sections (marked with **)
             if para.startswith('**') and para.endswith('**'):
                 pdf.set_font("Arial", 'B', 12)
-                para = para[2:-2].strip()  # Remove the ** markers
+                para = para[2:-2].strip()
                 pdf.multi_cell(effective_width, 8, para)
-                pdf.set_font("Arial", '', 12)  # Reset to regular font
+                pdf.set_font("Arial", '', 12)
             else:
                 pdf.multi_cell(effective_width, 8, para)
-            pdf.ln(5)  # Add space between paragraphs
-    
-    # Add footer
+            pdf.ln(5)
+
     pdf.set_y(-15)
     pdf.set_font("Arial", 'I', 8)
     pdf.cell(0, 10, f"Generated on {date.today().strftime('%Y-%m-%d')}", 0, 0, 'C')
-    
-    # Return PDF bytes directly (no need to encode as it's already bytes)
-    return BytesIO(pdf.output(dest='S'))
+
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return BytesIO(pdf_bytes)
 
 def main():
-    # Auto-update once a week
     if 'last_updated' not in st.session_state or (date.today() - st.session_state['last_updated']).days >= 7:
         update_market_data_file()
         st.session_state['last_updated'] = date.today()
 
     st.title("PetroEnergy Solutions - Business Intelligence Dashboard")
 
-    # Refresh button
     if st.button(" Refresh Live Data"):
         update_market_data_file()
         st.success("Market data refreshed.")
 
-    # Load data
     production_data = pd.read_csv('data/production_data.csv', parse_dates=['DATE'])
     equipment_data = pd.read_csv('data/equipment_data.csv', parse_dates=['TIMESTAMP'])
     market_data = pd.read_csv('data/market_data.csv', parse_dates=['DATE'])
-
-    # Clean market data before training
     market_data = market_data.dropna(subset=['WTIPRICE', 'BRENTPRICE'])
 
-    # Initialize models
     forecaster = initialize_forecaster(market_data)
     maintenance_model = initialize_maintenance_model(equipment_data)
 
-    # Sidebar controls
     st.sidebar.header("Controls")
     selected_facility = st.sidebar.selectbox("Select Facility", production_data['FACILITYID'].unique())
     date_range = st.sidebar.date_input("Date Range", [date.today() - timedelta(days=30), date.today()])
 
-    # Tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Production", "Market Forecast", "Equipment Health", "Sensor Readings", "Summary Report"])
 
     with tab1:
@@ -168,7 +147,6 @@ def main():
                         title="Anomaly Detection Results")
             st.plotly_chart(fig, use_container_width=True)
 
-        # Generate Maintenance Reports
         maintenance_report = maintenance_model.generate_maintenance_report(equipment_data)
         st.subheader("Top 5 Maintenance Priorities")
         st.dataframe(maintenance_report.head())
@@ -214,7 +192,6 @@ def main():
 
         st.markdown(summary)
 
-        # Downloadable summary
         csv_summary = pd.DataFrame({
             'Metric': ['Avg Production', 'Latest Health Score', 'WTI Forecast', 'Brent Forecast'],
             'Value': [avg_prod, last_health, price_preds['WTIPRICE_PRED'].iloc[-1], price_preds['BRENTPRICE_PRED'].iloc[-1]]
@@ -235,3 +212,11 @@ def main():
 if __name__ == "__main__":
     main()
     
+    
+   
+       
+
+   
+       
+
+      
